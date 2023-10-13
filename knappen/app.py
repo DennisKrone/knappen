@@ -15,7 +15,7 @@ lights = [
 
 @app.route('/')
 def main():
-    return render_template("index.html", async_mode=socketio.async_mode)
+    return render_template("index.html")
 
 @app.route("/lights")
 def get_ligth_status():
