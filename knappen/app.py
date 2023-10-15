@@ -27,9 +27,9 @@ def get_ligth_status():
 def set_light_status():
     json = request.get_json()
     for new in json:
-        for current in lights:
-            if new["color"] == current["color"]:
-                current["status"] = new["status"]
+        for light in lights["lights"]:
+            if new["color"] == light["color"]:
+                light["status"] = new["status"]
     emit("lights_updated", {"data": lights}, namespace="/", broadcast=True)
     return jsonify(lights), 200
 
