@@ -6,13 +6,14 @@ app.config["SECRET_KEY"] = "supersecret!%"
 
 socketio = SocketIO(app)
 
-lights = [
+lights = {"lights": [
     {"color": "red", "status": False},
     {"color": "green", "status": False},
     {"color": "blue", "status": False},
     {"color": "yellow", "status": False},
-    {"color": "white", "status": False}
-]
+    {"color": "white", "status": False},
+    ],
+}
 
 @app.route('/')
 def main():
