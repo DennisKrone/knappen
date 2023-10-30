@@ -1,18 +1,20 @@
-from crypt import methods
 import json
 from flask import Flask, jsonify, request, render_template
-from flask_socketio import SocketIO, emit
+from flask_sock import Sock
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "supersecret!%"
 
-socketio = SocketIO(app)
+sock = Sock(app)
+
 needs = [
     {"id": 0, "name": "energy", "status": 0},
     {"id": 1, "name": "intimacy", "status": 0},
     {"id": 2, "name": "hunger", "status": 0},
     {"id": 3, "name": "anxiety", "status": 0},
 ]
+
+knappen = False
 
 lights = {"lights": [
     {"color": "red", "status": False},
@@ -22,6 +24,8 @@ lights = {"lights": [
     {"color": "white", "status": False},
     ],
 }
+
+client_list = []
 
 @app.route("/lights")
 def get_ligth_status():
@@ -34,18 +38,26 @@ def set_light_status():
         for light in lights["lights"]:
             if new["color"] == light["color"]:
                 light["status"] = new["status"]
-    emit("lights_updated", lights, namespace="/", broadcast=True)
+    # emit("lights_updated", lights, namespace="/", broadcast=True)
     return jsonify(lights), 200
 
 @app.route('/')
 def main():
-    return render_template("index.html", hunger_status=get_need(2)["status"], energy_status=get_need(0)["status"], intimacy_status=get_need(1)["status"], anxiety_status=get_need(3)["status"])
+    return render_template("index.html", hunger_status=get_need(2)["status"], energy_status=get_need(0)["status"], intimacy_status=get_need(1)["status"], anxiety_status=get_need(3)["status"], knappen_status=knappen)
 
 @app.route("/knappen", methods=["PUT"])
 def push_knappen():
+    #TODO: verify request data
     status = json.loads(request.data)
-    emit("knappen_updated", status, namespace="/", broadcast=True)
+    knappen = status
+
+    broadcast_ws("knappen_update", knappen)
+
     return jsonify(status)
+
+@app.route("/knappen", methods=["GET"])
+def knappen_status():
+    return jsonify(knappen)
 
 
 def get_need(id: int):
@@ -78,20 +90,37 @@ def update_need(id: int):
         return jsonify({"error": "Invalid need properties"}), 400
     
     need.update(updated_need)
-    emit("need_updated", need, namespace="/", broadcast=True)
+    broadcast_ws("need_update", need)
+
     return jsonify(need)
 
-@socketio.on("connect")
-def connect():
-    emit("Connected", {"data": "Connected"})
+@sock.route("/")
+def needs_socket(ws):
+    client_list.append(ws)
+    while True:
+        data = ws.receive()
+        if data == 'stop':
+            break
+    client_list.remove(ws)
 
-@socketio.on("disconnect")
-def disconnect():
-    print("Client disconnected")
+@sock.route("/echo")
+def echo(sock):
+    while True:
+        data = sock.receive()
+        sock.send(data)
 
-@socketio.event
-def my_ping():
-    emit("my_pong")
+@app.route("/echo")
+def echo_page():
+    return render_template("echo.html")
+
+def broadcast_ws(event_type: str, data):
+    clients = client_list.copy()
+    for client in clients:
+        try:
+            client.send(json.dumps({"type": event_type, "data": data}))
+        except:
+            client_list.remove(client)
 
 if __name__ == "__main__":
-    socketio.run(app, use_reloader=True, log_output=True)
+    sock.init_app(app)
+    app.run()

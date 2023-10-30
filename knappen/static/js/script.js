@@ -170,7 +170,7 @@ gos.oninput = function() {
     });
 }
 
-
+console.log("knappen status: " + document.knappen_status)
 // when clicking the button start the timeline/animation:
 $( ".heart-button" ).click(function() {
     if ($(this).hasClass('active')){
